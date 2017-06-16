@@ -6,10 +6,24 @@ require 'byebug'
 
 class SQLObject
   def self.columns
-    # ...
+    if @columns.nil?
+      rows = DBConnection.execute2(<<-SQL)
+        SELECT
+          *
+        FROM
+          '#{table_name}'
+      SQL
+      @columns = rows.first.map(&:to_sym)
+    else
+      @columns
+    end
   end
 
   def self.finalize!
+    @columns.each do |column|
+      define_method("#{column}") { @attributes["#{column}"] }
+      define_method("#{column}=") { |value| @attributes["#{column}"] = value }
+    end
   end
 
   # set the name of the table for the class
@@ -39,7 +53,7 @@ class SQLObject
   end
 
   def attributes
-    # ...
+    @attributes ||= {}
   end
 
   def attribute_values
